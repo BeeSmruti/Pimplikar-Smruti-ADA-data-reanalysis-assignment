@@ -1,0 +1,125 @@
+---
+title: "data_analysis_rep"
+author: "SP"
+date: "4/14/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+Title of the paper: Who needs ‘lazy’ workers? Inactive workers act as a ‘reserve’ labor force replacing active workers, but inactive workers are not replaced when they are removed.
+Daniel Charbonneau, Takao Sasaki, Anna Dornhaus. 
+The goal of this paper is to test whether social insect Temnothorax rugatulus ant colonies replace highly active or highly inactive workers when some workers are removed. Social insect colonies generally tend to have a single reproductive individual and multiple ‘workers’ or individuals that perform various tasks to keep the unit going. These workers are generally allotted some tasks that they must carry out. Even though the task allotment seems to be rigid, it is expected that colonies might adjust in the event of some misfortune that may befall the colony and the workers. Studies show that increasing workload for a honeybee hive or decreasing the number of workers leads to a quick reallocation of work to other potentially idle workers. However, this has not been the case in every single study performed. Above 50% of the workforce in a social insect hive is inactive at any point which at first glance seems to be an inefficiently organized system. However, this is not the case. The authors hypothesize that the inactive workers serve as reserve labor for the colony and can rise to the occasion if the workload calls for it. This allows colonies to be more flexible. Surely if the colony invests all these resources into over half of its strength– they are important. If they are indeed important, does this mean that the colony will rapidly reallocate their task (unless their task is to be a reserve!) 
+Methods/Data Collected – 
+They collected 1307 workers from 20 colonies. (Table 1 reports a minimum and maximum values of individuals from each colony. The maximum total comes to 1307.) Colonies were housed in artificial nests during this experiment. They removed 20% of most active workers in 5 colonies, most inactive workers in 9 colonies and 20% randomly selected workers in the remaining 6 colonies. 20% of active workers removed – colony is known as “active”. Similarly inactive refers to those colonies WITHOUT 20% of the inactive workforce. Colonies were recorded for 3 days pre-removal, after 1 week of removal and again after 2 weeks from removal. (videos were 5 minutes long each- I believe this explains why they have a column for minimum number of ants observed per colony. For Jul_14, they observed anywhere from 85-105 individuals in these 5-minute video chunks.) Video scoring involved tracking the marked worker ants and observing their activity/task performed at every second. They differentiated the workers into – active (obvious engagement in some tasks for the nest), undifferentiated (moving inside the nest but not performing any task per se) and inactive (not moving or performing any task in the nest). There were 3 3-day filming sessions. The time spent active and inactive by individual foragers was proportioned and then the means were taken for them to give the level of activity or inactivity for each of the individuals. Workers that appeared only once in the 3 videos were removed to get a complete understanding over the 3 time periods. They listed out groups of tasks that these ants are most likely to do and then they performed a Principal Component and Hierarchical Cluster Analysis to decide which worker groups were to be removed. (I am not sure I fully understand what PCAs are. From what I understand, these were used to determine which individuals were active versus inactive so they could be removed in the test- they mention that the most active were nurses and foragers and these were also replaced most rapidly)
+Stat analyses included Mixed effect models, Tukey post hoc tests and Wilcoxon Signed Rank Test (using packages nlme , multcomp and wilcox.test) In the model, the fixed effect was the mean worker activity or inactivity and the colony identity was the random effect. The results in the paper show that colonies continued to remain as active as before after workers were removed. In the case of the removal of active workers, this shows that inactive workers stepped up to perform those tasks. In inactive worker removal trials, activity levels were maintained, and the levels of inactivity dropped (suggesting that colonies do not compensate for a loss in the inactive workforce). Random worker removals did not affect the activity/inactivity of the colonies. 
+ In conclusion, these ant colonies rapidly replace active labor force because they perform tasks that are crucial for survival of the colony. As for reserve work force, since they do not perform important day-to-day tasks, colonies are not as quick to reinforce these numbers. It is likely that those colonies that live in harsher environments have evolved this ‘reserve’ workforce to be able to deal with the unpredictability of the environment. 
+ 
+```{r}
+knitr::include_graphics("img/Image_1.ppt")
+```
+
+## Importing Data, packages and descriptive stats. 
+```{r}
+chooseCRANmirror(graphics=FALSE, ind=1)
+install.packages("tidyverse")
+library(tidyverse)
+install.packages("curl")
+library(curl)
+## loading in the data frame from Github and saving it as a variable "d".
+f <- curl("https://raw.githubusercontent.com/BeeSmruti/Pimplikar-Smruti-ADA-data-reanalysis-assignment/main/DryadData_Aug%208%202017.csv")
+d <- read.csv(f, header = TRUE, sep = ",", stringsAsFactors = FALSE)
+head(d)
+```
+## currently, d has the levels of activity(a) and inactivity(i) for all the treatments(Treat), trials(Trial) and colonies(Colony) in the study. 
+
+## 1307 ants collected overall is their population, which is to say that each colony is a sample from that population. 
+# Now per colony, if they are to remove 20% of the workforce, the remaining 80% of the colony becomes a sample. Thus, the descriptive stats were performed per Colony as population.
+
+```{r}
+d1<-filter(d, Treat=="RemRandom")
+d2<-filter(d, Treat=="RemActive")
+d3<-filter(d, Treat=="RemLazy")
+
+## mean time spent active and inactive per colony
+m<-aggregate(d, list(d$Colony), mean, na.rm=TRUE)
+m = subset(m, select = -c(2,3,4,5,8,9))
+m
+mean(m$a)
+mean(m$i)
+## sd of time spent active and inactive per colony
+sd<-aggregate(d, list(d$Colony), sd, na.rm=TRUE)
+sd = subset(sd, select = -c(2,3,4,5,8,9))
+sd
+## median of time spent active and inactive per colony
+median<-aggregate(d, list(d$Colony), median, na.rm=TRUE)
+median = subset(median, select = -c(2,3,4,5,8,9))
+median
+```
+
+
+## Visualization of the data
+```{r}
+knitr::include_graphics("img/Image_1.ppt")
+```
+
+```{r}
+install.packages("ggpubr")
+library(ggpubr)
+install.packages("cowplot")
+library(cowplot)
+install.packages("rstatix")
+library(rstatix)
+library(ggplot2)
+## the attempt is to replicate fig 1 boxplots in the paper
+
+p1 <- ggplot(d, aes(x=Trial, y=a, fill=Treat)) + ggtitle("Active Removed") + ylab("Proportion of time spent active \n by all workers") +  geom_boxplot()
+  facet_wrap(~Treat)
+## I'm not sure if the p values were derived here from wilcoxon tests
+q1<-p1+ stat_compare_means(method = "wilcox.test")
+
+p2 <- ggplot(d, aes(x=Trial, y=i, fill=Treat)) + ggtitle("Inactive Removed") + ylab("Proportion of time spent active \n by all workers") +
+  geom_boxplot()
+facet_wrap(~Treat)
+q2<-p2+ stat_compare_means(method = "wilcox.test")
+
+## putting the two plots together, since their axes are the same, it helps with comparison of the activity and inactivity levels for the whole colony.
+plot_grid(q1, q2,
+          nrow = 2,
+          labels = "AUTO",
+          label_size = 12,
+          align = "v"
+)
+knitr::include_graphics("img/Image_1.ppt")
+#knitr::opts_chunk$set(fig.path = “img/”)
+
+```
+## Inferential statistics (I tried running the model in this section but I think I have done something different from what is expected. I ran out of time so I haven't been able to fix it yet.)
+
+```{r}
+install.packages("nlme")
+library(nlme)
+## using lm() helped get results for the activity and inactivity 
+trial.lm <- lm(a ~ Trial, data = d)
+trial.av <- aov(trial.lm)
+summary(trial.av)
+## I performed a tukey test because for lme(), I was expected to put in a fixed and random effect. The random effect in the paper was "colony contrast significance using a tukey post hoc test". 
+## I don't think I got the right results using this test and wasn't able to plug them into the lme code?
+tukey.test <- TukeyHSD(trial.av)
+tukey.test
+plot(tukey.test)
+
+trialinac.lm <- lm(i ~ Trial, data = d)
+trialinac.av <- aov(trialinac.lm)
+summary(trialinac.av)
+
+tukey.test <- TukeyHSD(trialinac.av)
+tukey.test
+plot(tukey.test)
+```
+1.	For descriptive statistics – since their data only provided me with a proportion of the time spent by each worker as active or inactive, I used this to find the mean time spent active per colony for each of the treatments. I also found sd and median for them. 
+If mean of colonies is sample distribution mean, the mean of this sample distribution should have given me the population mean. I got the mean proportion of time spent active as 0.18416 and inactive as 0.55750 which didn’t end up matching their mean proportion  of 0.17 on active and 0.607 as inactive. 
+2.	For the visualization, I chose to do Figure 1 box plots. The figure plotted had two panels – one for the time spent active – across the three treatments (Removal of Active, Inactive and Random workers separated by individual boxplots for each other trials – pre-removal, after 1 week and after week 2.)  My plot looks a little different from theirs in that the trial sequence is different from theirs (mine is in descending order as opposed to theirs which is in ascending order. I tried to put mine in descending, but I was not able to). Mine is also in default ggplot colors but I can imagine that their images are in Black and White because of limitations of the journal. For the p-values plotted, I was not sure if the Wilcoxon test was used here so I tried that. Just default stat_compare_means gives me a Kruskall Wallis test, but they do not mention it in the paper.)
+3.	As for the inferential test, this is where I faced most of my issues. I tried to perform the LMM as described in fig 1. The random effects for the model were the colony contrast significance by a Tukey Post hoc test. I was able to use lm() to create a model for the time spent active and time sent inactive per trial and perform an analysis of variance for it. However in the paper, they have used lme() with the Tukey results as a random effect. I was not sure how to integrate the two which is why I was not able to finish up this section successfully. 
+Overall, I do not think I was very successful in replicating the assignment as well I would have thought. I did realize the difficulty in fully understanding a study in any scientific context and I would like to take this exercise up again with a better understanding of modeling, just to see if I can replicate the data given successfully. Another question I had while performing some of the preliminary analyses was whether the original data has outliers that were since removed (not including the ones removed in the experiment stage) while doing data analysis to get sharper results. 
+
+Charbonneau, D., Sasaki, T., & Dornhaus, A. (2017). Who needs ‘lazy’workers? Inactive workers act as a ‘reserve’labor force replacing active workers, but inactive workers are not replaced when they are removed. PloS one, 12(9), e0184074.
